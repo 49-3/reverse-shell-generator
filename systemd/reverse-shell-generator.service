@@ -1,0 +1,27 @@
+[Unit]
+Description=Reverse Shell Generator (Local Docker + Traefik)
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=3
+User=root
+Group=root
+EnvironmentFile=/etc/default/reverse-shell-generator
+ExecStartPre=-/usr/bin/docker rm -f ${RSG_CONTAINER_NAME}
+ExecStartPre=/usr/bin/bash -lc '/usr/bin/docker image inspect "${RSG_IMAGE}" >/dev/null 2>&1 || /usr/bin/docker build -t "${RSG_IMAGE}" "${RSG_SOURCE_DIR}"'
+ExecStart=/usr/bin/docker run \
+  --rm \
+  --name ${RSG_CONTAINER_NAME} \
+  --label traefik.enable=true \
+  --label "traefik.http.routers.reverse-shell-generator.rule=Host(`${RSG_HOST}`)" \
+  --label "traefik.http.routers.reverse-shell-generator.entrypoints=${RSG_ENTRYPOINT}" \
+  --label "traefik.http.routers.reverse-shell-generator.middlewares=${RSG_MIDDLEWARE}" \
+  --label "traefik.http.services.reverse-shell-generator.loadbalancer.server.port=80" \
+  ${RSG_IMAGE}
+ExecStop=/usr/bin/docker stop ${RSG_CONTAINER_NAME}
+
+[Install]
+WantedBy=multi-user.target

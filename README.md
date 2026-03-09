@@ -46,6 +46,57 @@ docker run -d -p 80:80 reverse_shell_generator
 
 Browse to http://localhost:80
 
+## Using systemd + Traefik (no published host port)
+
+This repository includes ready-to-use files under `systemd/` to run the app as a persistent Docker service.
+
+- `systemd/reverse-shell-generator.service`: systemd unit
+- `systemd/reverse-shell-generator.env`: runtime config
+
+The service behavior is:
+
+- remove old container on restart
+- check whether image exists locally
+- build image only if missing
+- run container with Traefik labels
+- do not publish any host port with `-p`
+
+### Install
+
+```bash
+sudo mkdir -p /opt/reverse-shell-generator
+sudo rsync -a --delete ./ /opt/reverse-shell-generator/
+
+sudo cp systemd/reverse-shell-generator.env /etc/default/reverse-shell-generator
+sudo cp systemd/reverse-shell-generator.service /etc/systemd/system/reverse-shell-generator.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now reverse-shell-generator.service
+```
+
+### Configure host and middleware
+
+Edit `/etc/default/reverse-shell-generator`:
+
+- `RSG_HOST`: Traefik hostname (example: `revshells.kore`)
+- `RSG_ENTRYPOINT`: Traefik entrypoint (example: `web`)
+- `RSG_MIDDLEWARE`: optional middleware chain (example: `chain-basic-auth@file`)
+- `RSG_SOURCE_DIR`: local repository path used for build
+
+Apply changes:
+
+```bash
+sudo systemctl restart reverse-shell-generator.service
+```
+
+### Verify
+
+```bash
+sudo systemctl status reverse-shell-generator.service --no-pager -l
+docker ps --filter name=reverse-shell-generator
+docker inspect reverse-shell-generator --format '{{json .Config.Labels}}'
+```
+
 ## Contributors ✨
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
